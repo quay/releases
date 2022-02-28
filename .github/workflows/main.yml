@@ -1,0 +1,149 @@
+# This is a basic workflow to help you get started with Actions
+
+name: Build and Release
+
+# Controls when the workflow will run
+on:
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to target for release'     
+        required: true
+      tag:
+        description: 'Tag to attach to image'     
+        required: true
+      clair-branch:
+        description: 'Clair branch to rlease'     
+        required: true
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+
+  quay:
+    name: "Build and Push Quay Image"
+    runs-on: ubuntu-latest
+    steps:
+    - uses: convictional/trigger-workflow-and-wait@v1.3.0
+      with:
+        owner: 'quay'
+        repo: 'quay'
+        github_token: ${{ secrets.PAT }}
+        workflow_file_name: build-and-publish.yaml
+        ref: ${{ github.event.inputs.branch }}
+        wait_interval: 30
+        inputs: |
+          {
+            "tag": "${{ github.event.inputs.tag }}"
+          }
+
+  clair:
+    name: "Build and Push Clair Image"
+    runs-on: ubuntu-latest
+    steps:
+    - uses: convictional/trigger-workflow-and-wait@v1.3.0
+      with:
+        owner: 'quay'
+        repo: 'clair'
+        github_token: ${{ secrets.PAT }}
+        workflow_file_name: nightly.yml
+        ref: ${{ github.event.inputs.clair-branch }}
+        wait_interval: 30
+        inputs: |
+          {
+            "tag": "${{ github.event.inputs.tag }}",
+            "go_version": "1.17.1"
+          }
+
+  quay-builder:
+    name: "Build and Push Quay Builder Image"
+    runs-on: ubuntu-latest
+    steps:
+    - uses: convictional/trigger-workflow-and-wait@v1.3.0
+      with:
+        owner: 'quay'
+        repo: 'quay-builder'
+        github_token: ${{ secrets.PAT }}
+        workflow_file_name: build-and-publish.yaml
+        ref: ${{ github.event.inputs.branch }}
+        wait_interval: 30
+        inputs: |
+          {
+            "tag": "${{ github.event.inputs.tag }}"
+          }
+
+  quay-builder-qemu:
+    name: "Build and Push Quay Builder QEMU Image"
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          echo "Using quay-builder-qemu:main as image"
+    # - uses: convictional/trigger-workflow-and-wait@v1.3.0
+    #   with:
+    #     owner: 'quay'
+    #     repo: 'quay-builder-qemu'
+    #     github_token: ${{ secrets.PAT }}
+    #     workflow_file_name: build-and-publish.yaml
+    #     ref: ${{ github.event.inputs.branch }}
+    #     wait_interval: 30
+    #     inputs: |
+    #       {
+    #         "tag": "${{ github.event.inputs.tag }}"
+    #       }
+
+  quay-operator:
+    name: "Build and Push Quay Operator Image"
+    runs-on: ubuntu-latest
+    steps:
+    - uses: convictional/trigger-workflow-and-wait@v1.3.0
+      with:
+        owner: 'quay'
+        repo: 'quay-operator'
+        github_token: ${{ secrets.PAT }}
+        workflow_file_name: image.yaml
+        ref: ${{ github.event.inputs.branch }}
+        wait_interval: 30
+        inputs: |
+          {
+            "tag": "${{ github.event.inputs.tag }}"
+          }
+
+  pull-request:
+    name: "Create Pull Request against Community Operators Repo"
+    runs-on: ubuntu-latest
+    needs: ["quay", "quay-operator", "clair", "quay-builder-qemu", "quay-builder"]
+    steps:
+      - name: Check out Quay Operator repo
+        uses: actions/checkout@master
+        with:
+          repository: redhat-openshift-ecosystem/community-operators-prod
+          token: ${{ secrets.PAT }}
+      - name: Download manifests folder 
+        run: |
+          git clone --branch ${{ github.event.inputs.branch }} https://${{ secrets.PAT }}@github.com/quay/quay-operator.git && \
+          cd quay-operator && make prepare-release RELEASE="${{ github.event.inputs.tag }}" QUAY_RELEASE="${{ github.event.inputs.tag }}" CLAIR_RELEASE="${{ github.event.inputs.tag }}" && \
+          cd .. && mv quay-operator/bundle/manifests operators/project-quay/${{ github.event.inputs.tag }} && \
+          rm -rf quay-operator operators/project-quay/${{ github.event.inputs.tag }}/quay-operator.service.yaml
+
+      - name: Update CSV Image Versions
+        uses: mikefarah/yq@master
+        with:
+          cmd: |
+            yq eval -i '
+              del(.spec.replaces) |
+              .metadata.annotations.containerImage = "quay.io/projectquay/quay-operator:${{ github.event.inputs.tag }}" |
+              .spec.install.spec.deployments[0].spec.template.spec.containers[0].image = "quay.io/projectquay/quay-operator:${{ github.event.inputs.tag }}" |
+              .spec.install.spec.deployments[0].spec.template.spec.containers[0].env[] |= select(.name == "RELATED_IMAGE_COMPONENT_BUILDER") .value = "quay.io/projectquay/quay-builder:${{ github.event.inputs.tag }}"
+              ' operators/project-quay/${{ github.event.inputs.tag }}/quay-operator.clusterserviceversion.yaml && sed -i -e 1,2d operators/project-quay/${{ github.event.inputs.tag }}/quayregistries.crd.yaml && sed -i -e 1,2d operators/project-quay/${{ github.event.inputs.tag }}/quayecosystems.crd.yaml
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v3
+        with:
+          token: ${{ secrets.PAT }}
+          commit-message: Add v${{ github.event.inputs.tag }} to community operators
+          author: quay-devel <quay-devel@redhat.com>
+          push-to-fork: quay/community-operators-prod  
+          signoff: true
+          body: Add v${{ github.event.inputs.tag }} to community operators
+          committer: quay-devel <quay-devel@redhat.com>
