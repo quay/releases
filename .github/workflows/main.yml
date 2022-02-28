@@ -1,0 +1,56 @@
+# This is a basic workflow to help you get started with Actions
+
+name: Build and Release
+
+# Controls when the workflow will run
+on:
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to target for release'     
+        required: true
+      tag:
+        description: 'Tag to attach to image'     
+        required: true
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a single job called "build"
+  # build-quay:
+  #   name: "Build Quay Image"
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/github-script@v6
+  #       with:
+  #         github-token: ${{ secrets.PAT_TOKEN }}
+  #         script: |
+  #           await github.rest.actions.createWorkflowDispatch({
+  #             owner: 'quay',
+  #             repo: 'quay',
+  #             workflow_id: 'main.yml',
+  #             ref: 'main',
+  #             inputs: {
+  #               commit: '${{ github.event.inputs.commit }}',
+  #               version: '${{ github.event.inputs.version }}',
+  #             },
+  #           })
+
+  build-clair:
+    name: "Build Clair Image"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.PAT_TOKEN }}
+          script: |
+            await github.rest.actions.createWorkflowDispatch({
+              owner: 'quay',
+              repo: 'clair',
+              workflow_id: 'main.yml',
+              ref: '${{ github.event.inputs.branch }}',
+              inputs: {
+                tag: '${{ github.event.inputs.tag }}',
+              },
+            })
