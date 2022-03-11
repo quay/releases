@@ -38,23 +38,23 @@ jobs:
             "tag": "${{ github.event.inputs.tag }}"
           }
 
-  clair:
-    name: "Build and Push Clair Image"
-    runs-on: ubuntu-latest
-    steps:
-    - uses: convictional/trigger-workflow-and-wait@v1.3.0
-      with:
-        owner: 'quay'
-        repo: 'clair'
-        github_token: ${{ secrets.PAT }}
-        workflow_file_name: nightly.yml
-        ref: ${{ github.event.inputs.clair-branch }}
-        wait_interval: 30
-        inputs: |
-          {
-            "tag": "${{ github.event.inputs.tag }}",
-            "go_version": "1.17.1"
-          }
+#   clair:
+#     name: "Build and Push Clair Image"
+#     runs-on: ubuntu-latest
+#     steps:
+#     - uses: convictional/trigger-workflow-and-wait@v1.3.0
+#       with:
+#         owner: 'quay'
+#         repo: 'clair'
+#         github_token: ${{ secrets.PAT }}
+#         workflow_file_name: nightly.yml
+#         ref: ${{ github.event.inputs.clair-branch }}
+#         wait_interval: 30
+#         inputs: |
+#           {
+#             "tag": "${{ github.event.inputs.tag }}",
+#             "go_version": "1.17.1"
+#           }
 
   quay-builder:
     name: "Build and Push Quay Builder Image"
