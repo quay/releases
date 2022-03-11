@@ -112,7 +112,8 @@ jobs:
   pull-request:
     name: "Create Pull Request against Community Operators Repo"
     runs-on: ubuntu-latest
-    needs: ["quay", "quay-operator", "clair", "quay-builder-qemu", "quay-builder"]
+    #needs: ["quay", "quay-operator", "clair", "quay-builder-qemu", "quay-builder"]
+    needs: ["quay", "quay-operator", "quay-builder-qemu", "quay-builder"]
     steps:
       - name: Check out Quay Operator repo
         uses: actions/checkout@master
