@@ -136,7 +136,7 @@ jobs:
               .metadata.annotations.containerImage = "quay.io/projectquay/quay-operator:${{ github.event.inputs.tag }}" |
               .spec.install.spec.deployments[0].spec.template.spec.containers[0].image = "quay.io/projectquay/quay-operator:${{ github.event.inputs.tag }}" |
               .spec.install.spec.deployments[0].spec.template.spec.containers[0].env[] |= select(.name == "RELATED_IMAGE_COMPONENT_BUILDER") .value = "quay.io/projectquay/quay-builder:${{ github.event.inputs.tag }}"
-              ' operators/project-quay/${{ github.event.inputs.tag }}/quay-operator.clusterserviceversion.yaml && sed -i -e 1,2d operators/project-quay/${{ github.event.inputs.tag }}/quayregistries.crd.yaml && sed -i -e 1,2d operators/project-quay/${{ github.event.inputs.tag }}/quayecosystems.crd.yaml
+              ' operators/project-quay/${{ github.event.inputs.tag }}/quay-operator.clusterserviceversion.yaml
 
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v3
