@@ -14,6 +14,9 @@ on:
       tag:
         description: 'Tag to attach to image'     
         required: true
+      channel:
+        description: 'Operatorhub channel, see https://github.com/redhat-openshift-ecosystem/community-operators-prod/blob/main/operators/project-quay/project-quay.package.yaml'     
+        required: true
       clair-version:
         description: 'Clair version'     
         required: true
@@ -108,17 +111,28 @@ jobs:
           cd .. && mv quay-operator/bundle/manifests operators/project-quay/${{ github.event.inputs.tag }} && \
           rm -rf quay-operator operators/project-quay/${{ github.event.inputs.tag }}/quay-operator.service.yaml
 
+      - name: Get and Set Old Version
+        run: echo OLD_VERSION=$(yq -P '.channels[] | select(.name == "${{ github.event.inputs.channel }}") .currentCSV' operators/project-quay/project-quay.package.yaml) >> $GITHUB_ENV
+
       - name: Update CSV Image Versions
         uses: mikefarah/yq@master
         with:
           cmd: |
             yq eval -i '
-              del(.spec.replaces) |
+              .spec.replaces = "${{ env.OLD_VERSION }}" |
               .metadata.annotations.containerImage = "quay.io/projectquay/quay-operator:${{ github.event.inputs.tag }}" |
               .spec.install.spec.deployments[0].spec.template.spec.containers[0].image = "quay.io/projectquay/quay-operator:${{ github.event.inputs.tag }}" |
               .spec.install.spec.deployments[0].spec.template.spec.containers[0].env[] |= select(.name == "RELATED_IMAGE_COMPONENT_BUILDER") .value = "quay.io/projectquay/quay-builder:${{ github.event.inputs.tag }}" |
               .spec.install.spec.deployments[0].spec.template.spec.containers[0].env[] |= select(.name == "RELATED_IMAGE_COMPONENT_CLAIR") .value = "quay.io/projectquay/clair:${{ github.event.inputs.clair-version }}"
               ' operators/project-quay/${{ github.event.inputs.tag }}/quay-operator.clusterserviceversion.yaml
+
+      - name: Update Package currentCSV
+        uses: mikefarah/yq@master
+        with:
+          cmd: |
+            yq eval -i '
+              .channels[] |= select(.currentCSV == "${{ env.OLD_VERSION }}") .currentCSV = "quay-operator.v${{ github.event.inputs.tag }}"
+              ' operators/project-quay/project-quay.package.yaml
 
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v3
