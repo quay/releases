@@ -131,7 +131,7 @@ jobs:
         with:
           cmd: |
             yq eval -i '
-              .channels[] |= select(.currentCSV == "${{ env.OLD_VERSION }}") .currentCSV = "quay-operator.v${{ github.event.inputs.tag }}"
+              .channels[] |= select(.currentCSV == "${{ env.OLD_VERSION }}") .currentCSV = "quay-operator.${{ github.event.inputs.tag }}"
               ' operators/project-quay/project-quay.package.yaml
 
       - name: Create Pull Request
