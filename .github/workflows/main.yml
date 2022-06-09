@@ -134,13 +134,24 @@ jobs:
               .channels[] |= select(.currentCSV == "${{ env.OLD_VERSION }}") .currentCSV = "quay-operator.v${{ github.event.inputs.tag }}"
               ' operators/project-quay/project-quay.package.yaml
 
-      - name: Create Pull Request
+      - name: Create Pull Request redhat-openshift-ecosystem
         uses: peter-evans/create-pull-request@v3
         with:
           token: ${{ secrets.PAT }}
           commit-message: Add v${{ github.event.inputs.tag }} to community operators
           author: quay-devel <quay-devel@redhat.com>
           push-to-fork: quay/community-operators-prod  
+          signoff: true
+          body: Add v${{ github.event.inputs.tag }} to community operators
+          committer: quay-devel <quay-devel@redhat.com>
+
+      - name: Create Pull Request k8s-operatorhub
+        uses: peter-evans/create-pull-request@v3
+        with:
+          token: ${{ secrets.PAT }}
+          commit-message: Add v${{ github.event.inputs.tag }} to community operators
+          author: quay-devel <quay-devel@redhat.com>
+          push-to-fork: quay/community-operators 
           signoff: true
           body: Add v${{ github.event.inputs.tag }} to community operators
           committer: quay-devel <quay-devel@redhat.com>
