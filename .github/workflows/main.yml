@@ -94,8 +94,8 @@ jobs:
             "tag": "${{ github.event.inputs.tag }}"
           }
 
-  pull-request:
-    name: "Create Pull Request against Community Operators Repo"
+  pull-request-redhat-openshift-ecosystem:
+    name: "Create Pull Request against Red Hat Community Operators Repo"
     runs-on: ubuntu-latest
     needs: ["quay", "quay-operator", "quay-builder-qemu", "quay-builder"]
     steps:
@@ -144,6 +144,23 @@ jobs:
           signoff: true
           body: Add v${{ github.event.inputs.tag }} to community operators
           committer: quay-devel <quay-devel@redhat.com>
+  
+  pull-request-k8s-operatorhub:
+    name: "Create Pull Request against Community Operators Repo"
+    runs-on: ubuntu-latest
+    needs: ["pull-request-redhat-openshift-ecosystem"]
+    steps:
+      - name: Check out Quay k8s-operatorhub/community-operators fork
+        uses: actions/checkout@master
+        with:
+          repository: k8s-operatorhub/community-operators
+          token: ${{ secrets.PAT }}
+      - name: Download community operators repo and pull in prod updates
+        run: |
+          git clone --branch create-pull-request/patch https://${{ secrets.PAT }}@github.com/quay/community-operators-prod.git && \
+          rm -rf operators/project-quay && \
+          mv community-operators-prod/operators/project-quay operators && \
+          rm -rf community-operators-prod
 
       - name: Create Pull Request k8s-operatorhub
         uses: peter-evans/create-pull-request@v3
@@ -154,4 +171,4 @@ jobs:
           push-to-fork: quay/community-operators 
           signoff: true
           body: Add v${{ github.event.inputs.tag }} to community operators
-          committer: quay-devel <quay-devel@redhat.com>
+          committer: quay-devel <quay-devel@redhat.com> 
