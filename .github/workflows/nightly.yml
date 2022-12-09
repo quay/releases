@@ -11,7 +11,7 @@ on:
       tag:
         description: 'Tag to attach to image'     
         required: false
-        default: '3.9.0'
+        default: 'nightly'
       channel:
         description: 'Operatorhub channel, see https://github.com/redhat-openshift-ecosystem/community-operators-prod/blob/main/operators/project-quay/project-quay.package.yaml'     
         required: false
