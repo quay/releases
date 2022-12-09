@@ -56,7 +56,7 @@ jobs:
         inputs: |
           {
             "branch": "${{ github.event.inputs.branch }}",
-            "tag": "${{ github.event.inputs.tag }}-${{ github.date.outputs.DATE }}",
+            "tag": "${{ github.event.inputs.tag }}-${{ steps.date.outputs.DATE }}",
             "channel": "${{ github.event.inputs.channel }}",
-            "clair-version": "${{ github.clair.outputs.VERSION }}"
+            "clair-version": "${{ steps.clair.outputs.VERSION }}"
           }
