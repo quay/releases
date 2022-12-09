@@ -17,7 +17,7 @@ on:
         required: false
         default: 'candidate-3.9'
       clair-version:
-        description: 'Clair version'     
+        description: 'Clair version, will use latest if left empty'     
         required: false
   schedule:
     - cron: '30 5 * * *'
@@ -31,7 +31,7 @@ jobs:
       id: clair
       run: |
         online=$(curl -sL https://api.github.com/repos/quay/clair/releases/latest | jq -r ".tag_name")
-        semver=$(test -n "${{github.event.inputs.clair-version}}" && echo "${{github.event.inputs.clair-version" || echo $online)
+        semver=$(test -n "${{github.event.inputs.clair-version}}" && echo "${{github.event.inputs.clair-version}}" || echo $online)
         version=$(echo $semver | sed 's/v//')
         echo VERSION=$version >> $GITHUB_OUTPUT
 
