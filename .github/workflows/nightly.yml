@@ -26,6 +26,9 @@ jobs:
   input:
     name: Prepare Inputs
     runs-on: 'ubuntu-latest'
+    outputs:
+      date: ${{ steps.date.outputs.DATE }}
+      clair-version: ${{ steps.clair.outputs.VERSION }}
     steps:
     - name: Set Clair Version
       id: clair
@@ -44,6 +47,7 @@ jobs:
   release:
     name: Trigger Release Workflow
     runs-on: 'ubuntu-latest'
+    needs: input
     steps:
     - uses: convictional/trigger-workflow-and-wait@v1.3.0
       with:
@@ -56,7 +60,7 @@ jobs:
         inputs: |
           {
             "branch": "${{ github.event.inputs.branch }}",
-            "tag": "${{ github.event.inputs.tag }}-${{ steps.date.outputs.DATE }}",
+            "tag": "${{ github.event.inputs.tag }}-${{ needs.input.outputs.date }}",
             "channel": "${{ github.event.inputs.channel }}",
-            "clair-version": "${{ steps.clair.outputs.VERSION }}"
+            "clair-version": "${{ needs.input.outputs.clair-version }}"
           }
