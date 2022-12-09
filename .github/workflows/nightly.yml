@@ -1,0 +1,62 @@
+---
+name: Nightly
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to target for release'     
+        required: false
+        default: 'redhat-3.9'
+      tag:
+        description: 'Tag to attach to image'     
+        required: false
+        default: '3.9.0'
+      channel:
+        description: 'Operatorhub channel, see https://github.com/redhat-openshift-ecosystem/community-operators-prod/blob/main/operators/project-quay/project-quay.package.yaml'     
+        required: false
+        default: 'candidate-3.9'
+      clair-version:
+        description: 'Clair version'     
+        required: false
+  schedule:
+    - cron: '30 5 * * *'
+
+jobs:
+  input:
+    name: Prepare Inputs
+    runs-on: 'ubuntu-latest'
+    steps:
+    - name: Set Clair Version
+      id: clair
+      run: |
+        online=$(curl -sL https://api.github.com/repos/quay/clair/releases/latest | jq -r ".tag_name")
+        semver=$(test -n "${{github.event.inputs.clair-version}}" && echo "${{github.event.inputs.clair-version" || echo $online)
+        version=$(echo $semver | sed 's/v//')
+        echo VERSION=$version >> $GITHUB_OUTPUT
+
+    - name: Get Date
+      id: date
+      run: |
+        today=$(date -u '+%Y-%m-%d')
+        echo DATE=$today >> $GITHUB_OUTPUT
+
+  release:
+    name: Trigger Release Workflow
+    runs-on: 'ubuntu-latest'
+    steps:
+    - uses: convictional/trigger-workflow-and-wait@v1.3.0
+      with:
+        owner: 'quay'
+        repo: 'releases'
+        github_token: ${{ secrets.PAT }}
+        workflow_file_name: main.yaml
+        ref: 'main'
+        wait_interval: 30
+        inputs: |
+          {
+            "branch": "${{ github.event.inputs.branch }}",
+            "tag": "${{ github.event.inputs.tag }}-${{ github.date.outputs.DATE }}",
+            "channel": "${{ github.event.inputs.channel }}",
+            "clair-version": "${{ github.clair.outputs.VERSION }}"
+          }
