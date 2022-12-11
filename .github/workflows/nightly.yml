@@ -41,7 +41,7 @@ jobs:
     - name: Get Date
       id: date
       run: |
-        today=$(date -u '+%Y-%m-%d')
+        today=$(date -u '+%Y.%m.%d')
         echo DATE=$today >> $GITHUB_OUTPUT
 
   release:
@@ -60,7 +60,7 @@ jobs:
         inputs: |
           {
             "branch": "${{ github.event.inputs.branch }}",
-            "tag": "${{ github.event.inputs.tag }}-${{ needs.input.outputs.date }}",
+            "tag": "${{ github.event.inputs.tag }}.${{ needs.input.outputs.date }}",
             "channel": "${{ github.event.inputs.channel }}",
             "clair-version": "${{ needs.input.outputs.clair-version }}"
           }
