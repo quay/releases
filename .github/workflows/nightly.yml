@@ -4,6 +4,7 @@ name: Nightly
 on:
   workflow_dispatch:
     inputs:
+      # Defaults are here for manual run examples, if changed, must be updated in params step too
       branch:
         description: 'Branch to target for release'     
         required: false
@@ -27,9 +28,31 @@ jobs:
     name: Prepare Inputs
     runs-on: 'ubuntu-latest'
     outputs:
-      date: ${{ steps.date.outputs.DATE }}
+      date: ${{ steps.params.outputs.DATE }}
+      branch: ${{ steps.params.outputs.BRANCH }}
+      tag: ${{ steps.params.outputs.TAG }}
+      channel: ${{ steps.params.outputs.CHANNEL }}
       clair-version: ${{ steps.clair.outputs.VERSION }}
     steps:
+    - name: Get Inputs
+      id: params
+      # Default vars must be updated if nightly version is changed
+      run: |
+        branchDefault='redhat-3.9'
+        branch=$(test -n "${{github.event.inputs.branch}}" && echo "${{github.event.inputs.branch}}" || echo $branchDefault)
+        echo BRANCH=$branch >> $GITHUB_OUTPUT
+        
+        tagDefault='3.9.0-nightly'
+        tag=$(test -n "${{github.event.inputs.tag}}" && echo "${{github.event.inputs.tag}}" || echo $tagDefault)
+        echo TAG=$tag >> $GITHUB_OUTPUT
+        
+        channelDefault='candidate-3.9'
+        channel=$(test -n "${{github.event.inputs.channel}}" && echo "${{github.event.inputs.channel}}" || echo $channelDefault)
+        echo CHANNEL=$channel >> $GITHUB_OUTPUT
+        
+        today=$(date -u '+%Y.%m.%d')
+        echo DATE=$today >> $GITHUB_OUTPUT
+
     - name: Set Clair Version
       id: clair
       run: |
@@ -37,12 +60,6 @@ jobs:
         semver=$(test -n "${{github.event.inputs.clair-version}}" && echo "${{github.event.inputs.clair-version}}" || echo $online)
         version=$(echo $semver | sed 's/v//')
         echo VERSION=$version >> $GITHUB_OUTPUT
-
-    - name: Get Date
-      id: date
-      run: |
-        today=$(date -u '+%Y.%m.%d')
-        echo DATE=$today >> $GITHUB_OUTPUT
 
   release:
     name: Trigger Release Workflow
@@ -59,8 +76,8 @@ jobs:
         wait_interval: 30
         inputs: |
           {
-            "branch": "${{ github.event.inputs.branch }}",
-            "tag": "${{ github.event.inputs.tag }}.${{ needs.input.outputs.date }}",
-            "channel": "${{ github.event.inputs.channel }}",
+            "branch": "${{ needs.input.outputs.branch }}",
+            "tag": "${{ needs.input.outputs.tag }}.${{ needs.input.outputs.date }}",
+            "channel": "${{ needs.input.outputs.channel }}",
             "clair-version": "${{ needs.input.outputs.clair-version }}"
           }
