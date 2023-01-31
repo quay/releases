@@ -50,7 +50,7 @@ jobs:
         channel=$(test -n "${{github.event.inputs.channel}}" && echo "${{github.event.inputs.channel}}" || echo $channelDefault)
         echo CHANNEL=$channel >> $GITHUB_OUTPUT
         
-        today=$(date -u '+%Y.%m.%d')
+        today=$(date -u '+%Y%m%d')
         echo DATE=$today >> $GITHUB_OUTPUT
 
     - name: Set Clair Version
