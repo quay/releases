@@ -28,7 +28,7 @@ jobs:
     name: "Build and Push Quay Image"
     runs-on: ubuntu-latest
     steps:
-    - uses: convictional/trigger-workflow-and-wait@v1.3.0
+    - uses: convictional/trigger-workflow-and-wait@v1.6.5
       with:
         owner: 'quay'
         repo: 'quay'
@@ -45,7 +45,7 @@ jobs:
     name: "Build and Push Quay Builder Image"
     runs-on: ubuntu-latest
     steps:
-    - uses: convictional/trigger-workflow-and-wait@v1.3.0
+    - uses: convictional/trigger-workflow-and-wait@v1.6.5
       with:
         owner: 'quay'
         repo: 'quay-builder'
@@ -64,7 +64,7 @@ jobs:
     steps:
       - run: |
           echo "Using quay-builder-qemu:main as image"
-    # - uses: convictional/trigger-workflow-and-wait@v1.3.0
+    # - uses: convictional/trigger-workflow-and-wait@v1.6.5
     #   with:
     #     owner: 'quay'
     #     repo: 'quay-builder-qemu'
@@ -81,7 +81,7 @@ jobs:
     name: "Build and Push Quay Operator Image"
     runs-on: ubuntu-latest
     steps:
-    - uses: convictional/trigger-workflow-and-wait@v1.3.0
+    - uses: convictional/trigger-workflow-and-wait@v1.6.5
       with:
         owner: 'quay'
         repo: 'quay-operator'
