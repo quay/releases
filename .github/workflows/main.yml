@@ -140,10 +140,13 @@ jobs:
             CLAIR_RELEASE="${{ github.event.inputs.clair-version }}" \
             REPLACES="${{ steps.versions.outputs.replaces }}"
           rm ./bundle/manifests/quay-operator.service.yaml
-
           cd ..
-          mkdir -p ./operators/project-quay/${{ github.event.inputs.tag }}/metadata
-          mv ./quay-operator/bundle/manifests ./operators/project-quay/${{ github.event.inputs.tag }}/manifests
+
+          mkdir -p ./operators/project-quay/${{ github.event.inputs.tag }}
+          mv \
+            ./quay-operator/bundle/manifests \
+            ./quay-operator/bundle/metadata \
+            ./operators/project-quay/${{ github.event.inputs.tag }}
 
           rm -rf ./quay-operator
 
