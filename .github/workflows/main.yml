@@ -1,29 +1,24 @@
-# This is a basic workflow to help you get started with Actions
-
 name: Build and Release
 
-# Controls when the workflow will run
 on:
-
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
     inputs:
       branch:
-        description: 'Branch to target for release'     
+        description: 'Branch to target for release'
         required: true
       tag:
-        description: 'Tag to attach to image'     
+        description: 'Tag to attach to image'
         required: true
       channel:
-        description: 'Operatorhub channel, see https://github.com/redhat-openshift-ecosystem/community-operators-prod/blob/main/operators/project-quay/project-quay.package.yaml'     
+        description: 'Operatorhub channel, see https://github.com/redhat-openshift-ecosystem/community-operators-prod/blob/main/operators/project-quay/project-quay.package.yaml'
         required: true
       clair-version:
-        description: 'Clair version'     
+        description: 'Clair version'
         required: true
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-
   quay:
     name: "Build and Push Quay Image"
     runs-on: ubuntu-latest
@@ -100,39 +95,57 @@ jobs:
     needs: ["quay", "quay-operator", "quay-builder-qemu", "quay-builder"]
     steps:
       - name: Check out Quay Operator repo
-        uses: actions/checkout@master
+        uses: actions/checkout@v3
         with:
           repository: redhat-openshift-ecosystem/community-operators-prod
           token: ${{ secrets.PAT }}
-      - name: Download manifests folder 
+
+      - name: Detect current versions
+        id: versions
+        env:
+          CHANNEL: ${{ github.event.inputs.channel }}
         run: |
-          git clone --branch ${{ github.event.inputs.branch }} https://${{ secrets.PAT }}@github.com/quay/quay-operator.git && \
-          cd quay-operator && make prepare-release RELEASE="${{ github.event.inputs.tag }}" QUAY_RELEASE="${{ github.event.inputs.tag }}" CLAIR_RELEASE="${{ github.event.inputs.tag }}" && \
-          cd .. && mv quay-operator/bundle/manifests operators/project-quay/${{ github.event.inputs.tag }} && \
-          rm -rf quay-operator operators/project-quay/${{ github.event.inputs.tag }}/quay-operator.service.yaml
+          cd ./operators/project-quay
 
-      - name: Get and Set Old Version
-        run: echo OLD_VERSION=$(yq -P '.channels[] | select(.name == "${{ github.event.inputs.channel }}") .currentCSV' operators/project-quay/project-quay.package.yaml) >> $GITHUB_ENV
+          PREVIOUS_VERSION=$(
+            for v in *; do
+              if
+                [ -e "$v/metadata/annotations.yaml" ] &&
+                [ "$(yq '.annotations["operators.operatorframework.io.bundle.channels.v1"]' "$v/metadata/annotations.yaml")" = "$CHANNEL" ]
+              then
+                echo "$v"
+              fi
+            done | sort -rV | head -n1
+          )
+          REPLACES=""
+          if [ -n "$PREVIOUS_VERSION" ]; then
+            REPLACES="quay-operator.v$PREVIOUS_VERSION"
+          fi
 
-      - name: Update CSV Image Versions
-        uses: mikefarah/yq@master
-        with:
-          cmd: |
-            yq eval -i '
-              .spec.replaces = "${{ env.OLD_VERSION }}" |
-              .metadata.annotations.containerImage = "quay.io/projectquay/quay-operator:${{ github.event.inputs.tag }}" |
-              .spec.install.spec.deployments[0].spec.template.spec.containers[0].image = "quay.io/projectquay/quay-operator:${{ github.event.inputs.tag }}" |
-              .spec.install.spec.deployments[0].spec.template.spec.containers[0].env[] |= select(.name == "RELATED_IMAGE_COMPONENT_BUILDER") .value = "quay.io/projectquay/quay-builder:${{ github.event.inputs.tag }}" |
-              .spec.install.spec.deployments[0].spec.template.spec.containers[0].env[] |= select(.name == "RELATED_IMAGE_COMPONENT_CLAIR") .value = "quay.io/projectquay/clair:${{ github.event.inputs.clair-version }}"
-              ' operators/project-quay/${{ github.event.inputs.tag }}/quay-operator.clusterserviceversion.yaml
+          STABLE_Y_STREAM=$(ls -1d *.0 | sort -rV | head -n1)
+          DEFAULT_CHANNEL="stable-${STABLE_Y_STREAM%.0}"
 
-      - name: Update Package currentCSV
-        uses: mikefarah/yq@master
-        with:
-          cmd: |
-            yq eval -i '
-              .channels[] |= select(.currentCSV == "${{ env.OLD_VERSION }}") .currentCSV = "quay-operator.v${{ github.event.inputs.tag }}"
-              ' operators/project-quay/project-quay.package.yaml
+          echo "replaces=$REPLACES" >> $GITHUB_OUTPUT
+          echo "default-channel=$DEFAULT_CHANNEL" >> $GITHUB_OUTPUT
+
+      - name: Download manifests folder
+        run: |
+          git clone --branch ${{ github.event.inputs.branch }} https://${{ secrets.PAT }}@github.com/quay/quay-operator.git
+
+          cd ./quay-operator
+          make prepare-release \
+            CHANNEL="${{ github.event.inputs.channel }}" \
+            DEFAULT_CHANNEL="${{ steps.versions.outputs.default-channel }}" \
+            RELEASE="${{ github.event.inputs.tag }}" \
+            CLAIR_RELEASE="${{ github.event.inputs.clair-version }}" \
+            REPLACES="${{ steps.versions.outputs.replaces }}"
+          rm ./bundle/manifests/quay-operator.service.yaml
+
+          cd ..
+          mkdir -p ./operators/project-quay/${{ github.event.inputs.tag }}/metadata
+          mv ./quay-operator/bundle/manifests ./operators/project-quay/${{ github.event.inputs.tag }}/manifests
+
+          rm -rf ./quay-operator
 
       - name: Create Pull Request redhat-openshift-ecosystem
         uses: peter-evans/create-pull-request@v3
@@ -140,26 +153,27 @@ jobs:
           token: ${{ secrets.PAT }}
           commit-message: Add ${{ github.event.inputs.tag }} to community operators
           author: quay-devel <quay-devel@redhat.com>
-          push-to-fork: quay/community-operators-prod  
+          push-to-fork: quay/community-operators-prod
           signoff: true
           body: Add ${{ github.event.inputs.tag }} to community operators
           committer: quay-devel <quay-devel@redhat.com>
-  
+
   pull-request-k8s-operatorhub:
     name: "Create Pull Request against Community Operators Repo"
     runs-on: ubuntu-latest
     needs: ["pull-request-redhat-openshift-ecosystem"]
     steps:
       - name: Check out Quay k8s-operatorhub/community-operators fork
-        uses: actions/checkout@master
+        uses: actions/checkout@v3
         with:
           repository: k8s-operatorhub/community-operators
           token: ${{ secrets.PAT }}
+
       - name: Download community operators repo and pull in prod updates
         run: |
-          git clone --branch create-pull-request/patch https://${{ secrets.PAT }}@github.com/quay/community-operators-prod.git && \
-          rm -rf operators/project-quay && \
-          mv community-operators-prod/operators/project-quay operators && \
+          git clone --branch create-pull-request/patch https://${{ secrets.PAT }}@github.com/quay/community-operators-prod.git
+          rm -rf operators/project-quay
+          mv community-operators-prod/operators/project-quay operators
           rm -rf community-operators-prod
 
       - name: Create Pull Request k8s-operatorhub
@@ -168,7 +182,7 @@ jobs:
           token: ${{ secrets.PAT }}
           commit-message: Add ${{ github.event.inputs.tag }} to community operators
           author: quay-devel <quay-devel@redhat.com>
-          push-to-fork: quay/community-operators 
+          push-to-fork: quay/community-operators
           signoff: true
           body: Add ${{ github.event.inputs.tag }} to community operators
-          committer: quay-devel <quay-devel@redhat.com> 
+          committer: quay-devel <quay-devel@redhat.com>
