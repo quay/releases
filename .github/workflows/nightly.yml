@@ -8,15 +8,15 @@ on:
       branch:
         description: 'Branch to target for release'     
         required: false
-        default: 'redhat-3.9'
+        default: 'redhat-3.10'
       tag:
         description: 'Tag to attach to image'     
         required: false
-        default: '3.9.0-nightly'
+        default: '3.10.0-nightly'
       channel:
         description: 'Operatorhub channel, see https://github.com/redhat-openshift-ecosystem/community-operators-prod/blob/main/operators/project-quay/project-quay.package.yaml'     
         required: false
-        default: 'candidate-3.9'
+        default: 'candidate-3.10'
       clair-version:
         description: 'Clair version, will use latest if left empty'     
         required: false
@@ -38,15 +38,15 @@ jobs:
       id: params
       # Default vars must be updated if nightly version is changed
       run: |
-        branchDefault='redhat-3.9'
+        branchDefault='redhat-3.10'
         branch=$(test -n "${{github.event.inputs.branch}}" && echo "${{github.event.inputs.branch}}" || echo $branchDefault)
         echo BRANCH=$branch >> $GITHUB_OUTPUT
         
-        tagDefault='3.9.0-nightly'
+        tagDefault='3.10.0-nightly'
         tag=$(test -n "${{github.event.inputs.tag}}" && echo "${{github.event.inputs.tag}}" || echo $tagDefault)
         echo TAG=$tag >> $GITHUB_OUTPUT
         
-        channelDefault='candidate-3.9'
+        channelDefault='candidate-3.10'
         channel=$(test -n "${{github.event.inputs.channel}}" && echo "${{github.event.inputs.channel}}" || echo $channelDefault)
         echo CHANNEL=$channel >> $GITHUB_OUTPUT
         
