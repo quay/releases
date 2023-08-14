@@ -122,6 +122,8 @@ jobs:
             REPLACES="quay-operator.v$PREVIOUS_VERSION"
           fi
 
+          mkdir -p ./${{ github.event.inputs.tag }}
+
           STABLE_Y_STREAM=$(ls -1d *.0 | sort -rV | head -n1)
           DEFAULT_CHANNEL="stable-${STABLE_Y_STREAM%.0}"
 
@@ -142,7 +144,6 @@ jobs:
           rm ./bundle/manifests/quay-operator.service.yaml
           cd ..
 
-          mkdir -p ./operators/project-quay/${{ github.event.inputs.tag }}
           mv \
             ./quay-operator/bundle/manifests \
             ./quay-operator/bundle/metadata \
