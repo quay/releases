@@ -161,6 +161,7 @@ jobs:
           signoff: true
           body: Add ${{ github.event.inputs.tag }} to community operators
           committer: quay-devel <quay-devel@redhat.com>
+          branch: create-pull-request/patch-${{ github.event.inputs.tag }}
 
   pull-request-k8s-operatorhub:
     name: "Create Pull Request against Community Operators Repo"
@@ -175,7 +176,7 @@ jobs:
 
       - name: Download community operators repo and pull in prod updates
         run: |
-          git clone --branch create-pull-request/patch https://${{ secrets.PAT }}@github.com/quay/community-operators-prod.git
+          git clone --branch create-pull-request/patch-${{ github.event.inputs.tag }} https://${{ secrets.PAT }}@github.com/quay/community-operators-prod.git
           rm -rf operators/project-quay
           mv community-operators-prod/operators/project-quay operators
           rm -rf community-operators-prod
@@ -190,3 +191,5 @@ jobs:
           signoff: true
           body: Add ${{ github.event.inputs.tag }} to community operators
           committer: quay-devel <quay-devel@redhat.com>
+          branch: create-pull-request/patch-${{ github.event.inputs.tag }}
+          delete-branch: true
